@@ -5,7 +5,7 @@
   "main": "src/cli/index.js",
   "type": "module",
   "bin": {
-    "logos": "src/cli/index.js"
+    "company-logos": "src/cli/index.js"
   },
   "files": [
     "src"
