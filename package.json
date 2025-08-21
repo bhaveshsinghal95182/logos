@@ -1,0 +1,35 @@
+{
+  "name": "logos",
+  "version": "1.0.0",
+  "description": "CLI + component registry for Logos",
+  "main": "src/cli/index.js",
+  "type": "module",
+  "bin": {
+    "logos": "src/cli/index.js"
+  },
+  "files": [
+    "cli"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "keywords": [
+    "cli",
+    "components",
+    "registry",
+    "logos"
+  ],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.13.1",
+  "dependencies": {
+    "chalk": "^5.6.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": ""
+  }
+}
