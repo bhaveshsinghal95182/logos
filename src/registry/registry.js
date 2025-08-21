@@ -1,12 +1,4 @@
-import { readFileSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
-import { GitHubProvider } from './providers/github-provider.js';
 import { SvglProvider } from './providers/svgl-provider.js';
-import { LocalProvider } from './providers/local-provider.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 /**
  * Refactored registry class with provider pattern
@@ -15,55 +7,26 @@ export class LogoRegistry {
   constructor() {
     this.providers = new Map();
     this.activeProvider = null;
-    this.registrySource = 'github';
-    this.useSvgl = false;
-    this.useGithub = true;
+    this.registrySource = 'svgl';
+    this.useSvgl = true;
     
     this.initializeProviders();
-    this.loadComponentIndex();
   }
 
   /**
    * Initialize all providers
    */
   initializeProviders() {
-    // GitHub provider
-    this.providers.set('github', new GitHubProvider());
-    
     // SVGL provider
     this.providers.set('svgl', new SvglProvider());
-    
-    // Local provider (fallback)
-    const componentsDir = join(__dirname, "components");
-    this.providers.set('local', new LocalProvider(componentsDir));
   }
 
   /**
-   * Load pre-generated component index if available
-   */
-  loadComponentIndex() {
-    try {
-      const indexPath = join(__dirname, "component-index.json");
-      const indexContent = readFileSync(indexPath, 'utf-8');
-      this.componentIndex = JSON.parse(indexContent);
-    } catch (error) {
-      console.warn("⚠️  Component index not found, falling back to API");
-      this.componentIndex = null;
-    }
-  }
-
-  /**
-   * Get the active provider based on current settings
+   * Get the active provider - always returns SVGL for now
    * @returns {BaseProvider}
    */
   getActiveProvider() {
-    if (this.registrySource === 'svgl' || this.useSvgl) {
-      return this.providers.get('svgl');
-    } else if (this.useGithub) {
-      return this.providers.get('github');
-    } else {
-      return this.providers.get('local');
-    }
+    return this.providers.get('svgl');
   }
 
   /**
@@ -121,24 +84,11 @@ export class LogoRegistry {
   }
 
   /**
-   * Get all available component names
+   * Get all available component names from SVGL
    * @returns {Promise<string[]>}
    */
   async getAvailableComponents() {
     const provider = this.getActiveProvider();
-    
-    // Force loading if we want SVGL and haven't loaded yet
-    if (this.registrySource === 'svgl' && !provider.isLoaded) {
-      await provider.loadComponents();
-      return provider.getComponentNames();
-    }
-    
-    // Use bundled index for GitHub registry only
-    if (this.componentIndex && this.registrySource !== 'svgl') {
-      return this.componentIndex.components.map(comp => comp.name).sort();
-    }
-    
-    // Fallback to loading all components
     await provider.loadComponents();
     return provider.getComponentNames();
   }
@@ -192,7 +142,7 @@ export class LogoRegistry {
   }
 
   /**
-   * Get registry statistics
+   * Get registry statistics from SVGL
    * @returns {Promise<Object>}
    */
   async getStats() {
@@ -201,7 +151,7 @@ export class LogoRegistry {
     
     return {
       totalComponents: provider.getComponentsCount(),
-      source: this.componentIndex && this.registrySource !== 'svgl' ? 'bundled-index' : provider.name,
+      source: provider.name,
       registrySource: this.registrySource,
       provider: provider.name
     };

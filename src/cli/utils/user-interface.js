@@ -41,17 +41,16 @@ export class UserInterface {
     console.log("   --jsx             Create JavaScript components");
     console.log("   --force, -f       Overwrite existing files");
     console.log("   --all, -a         Add all available components");
-    console.log("   --svgl            Use SVGL registry (500+ logos)");
     console.log("   --category, -c    Filter by category");
     console.log("   --search, -s      Search components");
     console.log();
     console.log(chalk.green("🌟 Examples:"));
     console.log("   company-logos add vercel --tsx");
-    console.log("   company-logos add --svgl discord --jsx");
+    console.log("   company-logos add discord --jsx");
     console.log("   company-logos add --category framework --tsx");
     console.log("   company-logos add --search react --jsx");
-    console.log("   company-logos available --svgl");
-    console.log("   company-logos categories --svgl");
+    console.log("   company-logos available");
+    console.log("   company-logos categories");
   }
 
   /**

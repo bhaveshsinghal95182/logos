@@ -14,8 +14,6 @@
     "access": "public"
   },
   "scripts": {
-    "prepack": "node scripts/generate-index.js",
-    "build:index": "node scripts/generate-index.js",
     "test": "echo \"No tests yet\" && exit 0"
   },
   "keywords": [

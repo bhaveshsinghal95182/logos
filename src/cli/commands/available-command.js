@@ -15,9 +15,6 @@ export class AvailableCommandHandler {
    */
   async execute(parsed) {
     const { flags } = parsed;
-    
-    // Configure registry source
-    this.configureRegistrySource(flags);
 
     const available = await this.registry.getAvailableComponents();
     const stats = await this.registry.getStats();
@@ -31,18 +28,6 @@ export class AvailableCommandHandler {
       await this.showBySearch(flags.search);
     } else {
       this.showAll(available);
-    }
-  }
-
-  /**
-   * Configure registry source based on flags
-   * @param {Object} flags - Command flags
-   */
-  configureRegistrySource(flags) {
-    if (flags.svgl) {
-      this.registry.registrySource = 'svgl';
-      this.registry.useSvgl = true;
-      this.registry.useGithub = false;
     }
   }
 

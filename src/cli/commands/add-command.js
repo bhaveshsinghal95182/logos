@@ -20,9 +20,6 @@ export class AddCommandHandler {
     const { flags } = parsed;
     let components = [...parsed.components];
 
-    // Configure registry source
-    this.configureRegistrySource(flags);
-
     // Handle special flags for component selection
     components = await this.resolveComponents(components, flags);
 
@@ -40,18 +37,6 @@ export class AddCommandHandler {
 
     // Create components
     await this.createComponents(components, isTypeScript, flags.force);
-  }
-
-  /**
-   * Configure registry source based on flags
-   * @param {Object} flags - Command flags
-   */
-  configureRegistrySource(flags) {
-    if (flags.svgl) {
-      this.registry.registrySource = 'svgl';
-      this.registry.useSvgl = true;
-      this.registry.useGithub = false;
-    }
   }
 
   /**
@@ -207,7 +192,7 @@ export class AddCommandHandler {
     console.log(chalk.gray("     add vercel --tsx"));
     console.log(chalk.gray("     add vercel next --jsx"));
     console.log(chalk.gray("     add --all --tsx"));
-    console.log(chalk.gray("     add --svgl discord --tsx"));
+    console.log(chalk.gray("     add discord --tsx"));
     console.log(chalk.gray("     add --category framework --tsx"));
     console.log(chalk.gray("     add --search react --jsx"));
   }

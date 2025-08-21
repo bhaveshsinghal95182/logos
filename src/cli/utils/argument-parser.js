@@ -19,7 +19,6 @@ export class ArgumentParser {
         jsx: false,
         force: false,
         all: false,
-        svgl: false,
         category: null,
         search: null,
       },
@@ -42,9 +41,6 @@ export class ArgumentParser {
         case "--all":
         case "-a":
           parsed.flags.all = true;
-          break;
-        case "--svgl":
-          parsed.flags.svgl = true;
           break;
         case "--category":
         case "-c":
