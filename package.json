@@ -1,11 +1,11 @@
 {
   "name": "company-logos",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "CLI + component registry for Logos",
-  "main": "src/cli/index.js",
+  "main": "src/cli/main.js",
   "type": "module",
   "bin": {
-    "company-logos": "src/cli/index.js"
+    "company-logos": "src/cli/main.js"
   },
   "files": [
     "src"
