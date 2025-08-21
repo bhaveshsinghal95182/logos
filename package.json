@@ -8,7 +8,7 @@
     "logos": "src/cli/index.js"
   },
   "files": [
-    "cli"
+    "src"
   ],
   "publishConfig": {
     "access": "public"
@@ -30,6 +30,6 @@
   },
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/bhaveshsinghal95182/logos.git"
   }
 }

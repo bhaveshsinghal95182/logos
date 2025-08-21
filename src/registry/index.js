@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Get the components directory path
+// Get the components directory path - now pointing to GitHub since local registry won't be in npm package
 const componentsDir = join(__dirname, "components");
 
 /**
@@ -15,12 +15,12 @@ class LogoRegistry {
   constructor() {
     this.components = new Map();
     this.isLoaded = false;
-    this.githubBaseUrl = "https://raw.githubusercontent.com/your-repo/logos/main/registry/components";
-    this.useGithub = false; // Set to true when you want to use GitHub
+    this.githubBaseUrl = "https://raw.githubusercontent.com/bhaveshsinghal95182/logos/main/registry/components";
+    this.useGithub = true; 
   }
 
   /**
-   * Load all SVG components from the components directory or GitHub
+   * Load all SVG components from GitHub (primary) or local fallback
    */
   async loadComponents() {
     if (this.isLoaded) return;
@@ -39,26 +39,30 @@ class LogoRegistry {
   }
 
   /**
-   * Load components from local file system
+   * Load components from local file system (fallback only)
    */
   async loadFromLocal() {
-    const files = readdirSync(componentsDir);
-    
-    for (const file of files) {
-      if (file.endsWith('.svg')) {
-        const name = file.replace('.svg', '');
-        const filePath = join(componentsDir, file);
-        const content = readFileSync(filePath, 'utf-8');
-        
-        this.components.set(name, {
-          name,
-          filePath,
-          content,
-          size: Buffer.byteLength(content, 'utf8'),
-          lastModified: new Date().toISOString(),
-          source: 'local'
-        });
+    try {
+      const files = readdirSync(componentsDir);
+      
+      for (const file of files) {
+        if (file.endsWith('.svg')) {
+          const name = file.replace('.svg', '');
+          const filePath = join(componentsDir, file);
+          const content = readFileSync(filePath, 'utf-8');
+          
+          this.components.set(name, {
+            name,
+            filePath,
+            content,
+            size: Buffer.byteLength(content, 'utf8'),
+            lastModified: new Date().toISOString(),
+            source: 'local'
+          });
+        }
       }
+    } catch (error) {
+      console.warn('⚠️  Local registry not available (expected in npm package)');
     }
   }
 
@@ -66,27 +70,43 @@ class LogoRegistry {
    * Load components from GitHub
    */
   async loadFromGithub() {
-    // First, get the list of components (you'd need an index endpoint)
-    const componentNames = ['vercel', 'next']; // This would come from an API call
+    // Get the list of available components from the GitHub API
+    const apiUrl = "https://api.github.com/repos/bhaveshsinghal95182/logos/contents/registry/components";
     
-    for (const name of componentNames) {
-      const url = `${this.githubBaseUrl}/${name}.svg`;
-      try {
-        const response = await fetch(url);
-        if (response.ok) {
-          const content = await response.text();
-          this.components.set(name, {
-            name,
-            filePath: url,
-            content,
-            size: Buffer.byteLength(content, 'utf8'),
-            lastModified: new Date().toISOString(),
-            source: 'github'
-          });
-        }
-      } catch (error) {
-        console.warn(`⚠️  Failed to load ${name} from GitHub:`, error.message);
+    try {
+      const response = await fetch(apiUrl);
+      if (!response.ok) {
+        throw new Error(`GitHub API responded with ${response.status}`);
       }
+      
+      const files = await response.json();
+      const svgFiles = files.filter(file => file.name.endsWith('.svg'));
+      
+      for (const file of svgFiles) {
+        const name = file.name.replace('.svg', '');
+        const downloadUrl = file.download_url;
+        
+        try {
+          const svgResponse = await fetch(downloadUrl);
+          if (svgResponse.ok) {
+            const content = await svgResponse.text();
+            this.components.set(name, {
+              name,
+              filePath: downloadUrl,
+              content,
+              size: Buffer.byteLength(content, 'utf8'),
+              lastModified: new Date().toISOString(),
+              source: 'github'
+            });
+          }
+        } catch (error) {
+          console.warn(`⚠️  Failed to load ${name} from GitHub:`, error.message);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch component list from GitHub:', error.message);
+      // Fallback to local if GitHub fails
+      await this.loadFromLocal();
     }
   }
 

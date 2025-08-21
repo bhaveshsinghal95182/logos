@@ -2,7 +2,7 @@ import { existsSync, writeFileSync, mkdirSync, readFileSync } from "fs";
 import { join } from "path";
 import chalk from "chalk";
 import * as readline from "readline";
-import registry from "../../registry/index.js";
+import registry from "../registry/index.js";
 
 const args = process.argv.slice(2);
 const cwd = process.cwd();
