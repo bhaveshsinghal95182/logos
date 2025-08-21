@@ -8,6 +8,16 @@ const __dirname = dirname(__filename);
 // Get the components directory path - now pointing to GitHub since local registry won't be in npm package
 const componentsDir = join(__dirname, "components");
 
+// Import pre-generated component index (bundled in npm package)
+let componentIndex = null;
+try {
+  const indexPath = join(__dirname, "component-index.json");
+  const indexContent = readFileSync(indexPath, 'utf-8');
+  componentIndex = JSON.parse(indexContent);
+} catch (error) {
+  console.warn("⚠️  Component index not found, falling back to GitHub API");
+}
+
 /**
  * Registry class for managing logo components
  */
@@ -134,15 +144,26 @@ class LogoRegistry {
    * @returns {Promise<Object|null>} Component data or null if not found
    */
   async loadSingleComponent(name) {
-    const url = `${this.githubBaseUrl}/${name}.svg`;
+    // Try to get download URL from bundled index first
+    let downloadUrl = `${this.githubBaseUrl}/${name}.svg`;
+    
+    if (componentIndex) {
+      const indexEntry = componentIndex.components.find(comp => comp.name === name);
+      if (indexEntry) {
+        downloadUrl = indexEntry.downloadUrl;
+      } else {
+        console.warn(`⚠️  Component '${name}' not found in index`);
+        return null;
+      }
+    }
     
     try {
-      const response = await fetch(url);
+      const response = await fetch(downloadUrl);
       if (response.ok) {
         const content = await response.text();
         const component = {
           name,
-          filePath: url,
+          filePath: downloadUrl,
           content,
           size: Buffer.byteLength(content, 'utf8'),
           lastModified: new Date().toISOString(),
@@ -191,12 +212,39 @@ class LogoRegistry {
   }
 
   /**
-   * Get all available component names
+   * Get all available component names (instant lookup from bundled index)
    * @returns {Promise<string[]>} Array of component names
    */
   async getAvailableComponents() {
+    // Use bundled index for instant lookup
+    if (componentIndex) {
+      return componentIndex.components.map(comp => comp.name).sort();
+    }
+    
+    // Fallback to loading all components
     await this.loadComponents();
     return Array.from(this.components.keys()).sort();
+  }
+
+  /**
+   * Check if a component exists (instant check from bundled index)
+   * @param {string} name - Component name
+   * @returns {Promise<boolean>}
+   */
+  async hasComponent(name) {
+    // Quick check if already loaded
+    if (this.components.has(name)) {
+      return true;
+    }
+    
+    // Instant check from bundled index
+    if (componentIndex) {
+      return componentIndex.components.some(comp => comp.name === name);
+    }
+    
+    // Fallback: lazy load to verify existence
+    const component = await this.loadSingleComponent(name);
+    return component !== null;
   }
 
   /**
@@ -219,10 +267,26 @@ class LogoRegistry {
   }
 
   /**
-   * Get registry statistics
+   * Get registry statistics (enhanced with bundled index)
    * @returns {Promise<Object>} Registry stats
    */
   async getStats() {
+    // Use bundled index for instant stats
+    if (componentIndex) {
+      const totalSize = componentIndex.components.reduce((sum, comp) => sum + comp.size, 0);
+      return {
+        totalComponents: componentIndex.components.length,
+        totalSize: totalSize,
+        averageSize: componentIndex.components.length > 0 
+          ? Math.round(totalSize / componentIndex.components.length)
+          : 0,
+        lastUpdated: componentIndex.metadata.generated,
+        source: 'bundled-index',
+        repository: componentIndex.metadata.repository
+      };
+    }
+    
+    // Fallback to loading components
     await this.loadComponents();
     const components = Array.from(this.components.values());
     return {

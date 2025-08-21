@@ -1,0 +1,22 @@
+{
+  "metadata": {
+    "total": 2,
+    "generated": "2025-08-21T09:29:44.170Z",
+    "repository": "bhaveshsinghal95182/logos",
+    "branch": "main"
+  },
+  "components": [
+    {
+      "name": "next",
+      "size": 1375,
+      "downloadUrl": "https://raw.githubusercontent.com/bhaveshsinghal95182/logos/main/registry/components/next.svg",
+      "sha": "5174b28c565c285e3e312ec5178be64fbeca8398"
+    },
+    {
+      "name": "vercel",
+      "size": 136,
+      "downloadUrl": "https://raw.githubusercontent.com/bhaveshsinghal95182/logos/main/registry/components/vercel.svg",
+      "sha": "208430a9ee6485f448c3b439f4c62494ee3c9f29"
+    }
+  ]
+}
