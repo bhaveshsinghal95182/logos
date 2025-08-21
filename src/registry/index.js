@@ -26,17 +26,27 @@ class LogoRegistry {
     this.components = new Map();
     this.isLoaded = false;
     this.githubBaseUrl = "https://raw.githubusercontent.com/bhaveshsinghal95182/logos/main/registry/components";
+    this.svglBaseUrl = "https://api.svgl.app";
     this.useGithub = true;
+    this.useSvgl = false; // Set to true to use SVGL as source
+    this.registrySource = 'github'; // 'github', 'svgl', or 'both'
   }
 
   /**
-   * Load all SVG components from GitHub (optimized for npx)
+   * Load all SVG components from GitHub or SVGL (optimized for npx)
    */
   async loadComponents() {
     if (this.isLoaded) return;
 
     try {
-      if (this.useGithub) {
+      if (this.registrySource === 'both') {
+        await Promise.all([
+          this.loadFromGithub(),
+          this.loadFromSvgl()
+        ]);
+      } else if (this.registrySource === 'svgl' || this.useSvgl) {
+        await this.loadFromSvgl();
+      } else if (this.useGithub) {
         await this.loadFromGithub();
       } else {
         await this.loadFromLocal();
@@ -78,8 +88,59 @@ class LogoRegistry {
   }
 
   /**
-   * Load components from GitHub with parallel downloads
+   * Load components from SVGL API
    */
+  async loadFromSvgl() {
+    try {
+      const response = await fetch(this.svglBaseUrl);
+      if (!response.ok) {
+        throw new Error(`SVGL API responded with ${response.status}`);
+      }
+      
+      const svgData = await response.json();
+      
+      // Process SVGL components
+      for (const svg of svgData) {
+        const name = svg.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        
+        // Handle different route formats (string or theme object)
+        let svgUrl;
+        if (typeof svg.route === 'string') {
+          svgUrl = svg.route;
+        } else if (svg.route && svg.route.light) {
+          svgUrl = svg.route.light; // Default to light theme
+        } else {
+          continue; // Skip if no valid route
+        }
+        
+        // We don't download the SVG content here for performance
+        // It will be loaded on-demand
+        this.components.set(name, {
+          name,
+          title: svg.title,
+          category: Array.isArray(svg.category) ? svg.category : [svg.category],
+          filePath: svgUrl,
+          content: null, // Will be loaded on-demand
+          size: 0, // Unknown until loaded
+          lastModified: new Date().toISOString(),
+          source: 'svgl',
+          brandUrl: svg.url,
+          id: svg.id,
+          hasThemes: typeof svg.route === 'object',
+          darkRoute: svg.route?.dark || null
+        });
+      }
+      
+      console.log(`📦 Loaded ${svgData.length} components from SVGL`);
+      
+    } catch (error) {
+      console.error('❌ Failed to load from SVGL:', error.message);
+      // Fallback to GitHub if SVGL fails
+      if (this.useGithub) {
+        await this.loadFromGithub();
+      }
+    }
+  }
   async loadFromGithub() {
     // Get the list of available components from the GitHub API
     const apiUrl = "https://api.github.com/repos/bhaveshsinghal95182/logos/contents/registry/components";
@@ -139,11 +200,55 @@ class LogoRegistry {
   }
 
   /**
-   * Load a single component on-demand (optimized for npx)
+   * Load a single component on-demand (supports both GitHub and SVGL)
    * @param {string} name - Component name
    * @returns {Promise<Object|null>} Component data or null if not found
    */
   async loadSingleComponent(name) {
+    // Check if we have component metadata (from SVGL or GitHub index)
+    const metadata = this.components.get(name);
+    
+    if (metadata && metadata.source === 'svgl') {
+      return await this.loadSvglComponent(name, metadata);
+    } else if (metadata && metadata.source === 'github') {
+      return await this.loadGithubComponent(name, metadata);
+    } else {
+      // Fallback: try GitHub direct
+      return await this.loadGithubComponent(name);
+    }
+  }
+
+  /**
+   * Load component from SVGL
+   */
+  async loadSvglComponent(name, metadata) {
+    try {
+      const svgUrl = metadata.filePath;
+      const response = await fetch(svgUrl);
+      
+      if (response.ok) {
+        const content = await response.text();
+        const component = {
+          ...metadata,
+          content,
+          size: Buffer.byteLength(content, 'utf8'),
+          lastModified: new Date().toISOString()
+        };
+        
+        this.components.set(name, component);
+        return component;
+      }
+    } catch (error) {
+      console.warn(`⚠️  Failed to load ${name} from SVGL:`, error.message);
+    }
+    
+    return null;
+  }
+
+  /**
+   * Load component from GitHub
+   */
+  async loadGithubComponent(name, metadata = null) {
     // Try to get download URL from bundled index first
     let downloadUrl = `${this.githubBaseUrl}/${name}.svg`;
     
@@ -151,7 +256,7 @@ class LogoRegistry {
       const indexEntry = componentIndex.components.find(comp => comp.name === name);
       if (indexEntry) {
         downloadUrl = indexEntry.downloadUrl;
-      } else {
+      } else if (!metadata) {
         console.warn(`⚠️  Component '${name}' not found in index`);
         return null;
       }
@@ -163,6 +268,7 @@ class LogoRegistry {
         const content = await response.text();
         const component = {
           name,
+          title: name.charAt(0).toUpperCase() + name.slice(1),
           filePath: downloadUrl,
           content,
           size: Buffer.byteLength(content, 'utf8'),
@@ -188,7 +294,12 @@ class LogoRegistry {
   async getComponent(name) {
     // Check if already loaded
     if (this.components.has(name)) {
-      return this.components.get(name);
+      const component = this.components.get(name);
+      // If content is null (SVGL metadata only), load the actual content
+      if (component && component.content === null) {
+        return await this.loadSingleComponent(name);
+      }
+      return component;
     }
     
     // Lazy load single component
@@ -212,12 +323,18 @@ class LogoRegistry {
   }
 
   /**
-   * Get all available component names (instant lookup from bundled index)
+   * Get all available component names (supports SVGL and bundled index)
    * @returns {Promise<string[]>} Array of component names
    */
   async getAvailableComponents() {
-    // Use bundled index for instant lookup
-    if (componentIndex) {
+    // Force loading if we want SVGL and haven't loaded yet
+    if (this.registrySource === 'svgl' && !this.isLoaded) {
+      await this.loadComponents();
+      return Array.from(this.components.keys()).sort();
+    }
+    
+    // Use bundled index for GitHub registry only
+    if (componentIndex && this.registrySource !== 'svgl') {
       return componentIndex.components.map(comp => comp.name).sort();
     }
     
@@ -227,7 +344,7 @@ class LogoRegistry {
   }
 
   /**
-   * Check if a component exists (instant check from bundled index)
+   * Check if a component exists (enhanced for SVGL)
    * @param {string} name - Component name
    * @returns {Promise<boolean>}
    */
@@ -237,8 +354,14 @@ class LogoRegistry {
       return true;
     }
     
-    // Instant check from bundled index
-    if (componentIndex) {
+    // For SVGL, load components first to check
+    if (this.registrySource === 'svgl') {
+      await this.loadComponents();
+      return this.components.has(name);
+    }
+    
+    // Instant check from bundled index (GitHub only)
+    if (componentIndex && this.registrySource !== 'svgl') {
       return componentIndex.components.some(comp => comp.name === name);
     }
     
@@ -301,14 +424,74 @@ class LogoRegistry {
   }
 
   /**
-   * Search components by name pattern
+   * Search components by name, category, or pattern (enhanced with SVGL)
    * @param {string} pattern - Search pattern
    * @returns {Promise<string[]>} Matching component names
    */
   async searchComponents(pattern) {
-    const available = await this.getAvailableComponents();
+    await this.loadComponents();
+    
     const regex = new RegExp(pattern, 'i');
-    return available.filter(name => regex.test(name));
+    const matches = [];
+    
+    this.components.forEach((component, name) => {
+      // Search by name
+      if (regex.test(name) || regex.test(component.title || '')) {
+        matches.push(name);
+        return;
+      }
+      
+      // Search by category (for SVGL components)
+      if (component.category && Array.isArray(component.category)) {
+        if (component.category.some(cat => regex.test(cat))) {
+          matches.push(name);
+        }
+      }
+    });
+    
+    return matches.sort();
+  }
+
+  /**
+   * Get components by category (SVGL feature)
+   * @param {string} category - Category name
+   * @returns {Promise<string[]>} Component names in category
+   */
+  async getComponentsByCategory(category) {
+    await this.loadComponents();
+    
+    const matches = [];
+    this.components.forEach((component, name) => {
+      if (component.category && Array.isArray(component.category)) {
+        if (component.category.some(cat => cat.toLowerCase() === category.toLowerCase())) {
+          matches.push(name);
+        }
+      }
+    });
+    
+    return matches.sort();
+  }
+
+  /**
+   * Get all categories (SVGL feature)
+   * @returns {Promise<Object[]>} Categories with counts
+   */
+  async getCategories() {
+    await this.loadComponents();
+    
+    const categoryCount = new Map();
+    
+    this.components.forEach((component) => {
+      if (component.category && Array.isArray(component.category)) {
+        component.category.forEach(cat => {
+          categoryCount.set(cat, (categoryCount.get(cat) || 0) + 1);
+        });
+      }
+    });
+    
+    return Array.from(categoryCount.entries())
+      .map(([category, total]) => ({ category, total }))
+      .sort((a, b) => b.total - a.total);
   }
 
   /**

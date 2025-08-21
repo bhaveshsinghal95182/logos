@@ -1,16 +1,22 @@
 {
   "metadata": {
-    "total": 2,
-    "generated": "2025-08-21T09:50:24.512Z",
+    "total": 3,
+    "generated": "2025-08-21T10:06:03.981Z",
     "repository": "bhaveshsinghal95182/logos",
     "branch": "main"
   },
   "components": [
     {
+      "name": "clerk",
+      "size": 728,
+      "downloadUrl": "https://raw.githubusercontent.com/bhaveshsinghal95182/logos/main/registry/components/clerk.svg",
+      "sha": "2d6626895a89c54181061abbab3d618d593a4fd2"
+    },
+    {
       "name": "next",
-      "size": 1375,
+      "size": 1404,
       "downloadUrl": "https://raw.githubusercontent.com/bhaveshsinghal95182/logos/main/registry/components/next.svg",
-      "sha": "5174b28c565c285e3e312ec5178be64fbeca8398"
+      "sha": "4f5db824041ff84872e2ac602cd1575fb0a5135f"
     },
     {
       "name": "vercel",

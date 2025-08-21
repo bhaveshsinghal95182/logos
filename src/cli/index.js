@@ -22,7 +22,10 @@ function parseArgs() {
       tsx: false,
       jsx: false,
       force: false,
-      all: false
+      all: false,
+      svgl: false,
+      category: null,
+      search: null
     }
   };
 
@@ -37,6 +40,12 @@ function parseArgs() {
       parsed.flags.force = true;
     } else if (arg === '--all' || arg === '-a') {
       parsed.flags.all = true;
+    } else if (arg === '--svgl') {
+      parsed.flags.svgl = true;
+    } else if (arg === '--category' || arg === '-c') {
+      parsed.flags.category = args[++i];
+    } else if (arg === '--search' || arg === '-s') {
+      parsed.flags.search = args[++i];
     } else if (!arg.startsWith('-')) {
       parsed.components.push(arg);
     }
@@ -116,6 +125,19 @@ function addLogoToTracking(componentName, fileExtension, filePath) {
 function generateComponentContent(componentName, svgContent, isTypeScript) {
   const componentClassName = componentName.charAt(0).toUpperCase() + componentName.slice(1);
   
+  // Clean SVG content for React/JSX compatibility
+  let cleanedSvg = svgContent
+    // Remove XML declaration
+    .replace(/<\?xml[^>]*\?>\s*/i, '')
+    // Remove comments
+    .replace(/<!--[\s\S]*?-->/g, '')
+    // Convert fill-rule to fillRule
+    .replace(/fill-rule=/g, 'fillRule=')
+    // Convert xmlns:xlink to xmlnsXlink
+    .replace(/xmlns:xlink=/g, 'xmlnsXlink=')
+    // Trim whitespace
+    .trim();
+  
   return isTypeScript 
     ? `import React from 'react';
 
@@ -127,14 +149,14 @@ interface ${componentClassName}LogoProps {
 
 export default function ${componentClassName}Logo({ className, width = 24, height = 24 }: ${componentClassName}LogoProps) {
   return (
-    ${svgContent.replace('<svg', `<svg className={className} width={width} height={height}`)}
+    ${cleanedSvg.replace('<svg', `<svg className={className} width={width} height={height}`)}
   );
 }`
     : `import React from 'react';
 
 export default function ${componentClassName}Logo({ className, width = 24, height = 24 }) {
   return (
-    ${svgContent.replace('<svg', `<svg className={className} width={width} height={height}`)}
+    ${cleanedSvg.replace('<svg', `<svg className={className} width={width} height={height}`)}
   );
 }`;
 }
@@ -207,11 +229,45 @@ async function createComponent(componentName, isTypeScript, force = false) {
 }
 
 /**
- * Handle add command
+ * Handle add command with SVGL support
  */
 async function handleAddCommand(parsed) {
   let { components } = parsed;
   const { flags } = parsed;
+
+  // Configure registry source
+  if (flags.svgl) {
+    registry.registrySource = 'svgl';
+    registry.useSvgl = true;
+    registry.useGithub = false;
+  }
+
+  // Handle category filter
+  if (flags.category) {
+    const categoryComponents = await registry.getComponentsByCategory(flags.category);
+    if (categoryComponents.length === 0) {
+      console.log(chalk.red(`❌ No components found in category '${flags.category}'`));
+      const categories = await registry.getCategories();
+      console.log(chalk.yellow("📋 Available categories:"));
+      categories.slice(0, 10).forEach(cat => {
+        console.log(chalk.cyan(`   • ${cat.category} (${cat.total} components)`));
+      });
+      return;
+    }
+    components = categoryComponents;
+    console.log(chalk.blue(`📦 Adding ${components.length} components from '${flags.category}' category...`));
+  }
+
+  // Handle search filter
+  if (flags.search) {
+    const searchResults = await registry.searchComponents(flags.search);
+    if (searchResults.length === 0) {
+      console.log(chalk.red(`❌ No components found matching '${flags.search}'`));
+      return;
+    }
+    components = searchResults;
+    console.log(chalk.blue(`🔍 Found ${components.length} components matching '${flags.search}'...`));
+  }
 
   // Handle --all flag
   if (flags.all) {
@@ -227,6 +283,9 @@ async function handleAddCommand(parsed) {
     console.log(chalk.gray("     add vercel --tsx"));
     console.log(chalk.gray("     add vercel next --jsx"));
     console.log(chalk.gray("     add --all --tsx"));
+    console.log(chalk.gray("     add --svgl discord --tsx"));
+    console.log(chalk.gray("     add --category framework --tsx"));
+    console.log(chalk.gray("     add --search react --jsx"));
     return;
   }
 
@@ -258,7 +317,10 @@ async function handleAddCommand(parsed) {
     console.log(chalk.red(`❌ Components not found: ${missingComponents.join(', ')}`));
     console.log(chalk.yellow("📋 Available components:"));
     const available = await registry.getAvailableComponents();
-    available.forEach(comp => console.log(chalk.cyan(`   • ${comp}`)));
+    available.slice(0, 10).forEach(comp => console.log(chalk.cyan(`   • ${comp}`)));
+    if (available.length > 10) {
+      console.log(chalk.gray(`   ... and ${available.length - 10} more`));
+    }
     return;
   }
 
@@ -298,42 +360,105 @@ function handleListCommand() {
 }
 
 /**
- * Handle available command
+ * Handle available command with SVGL support
  */
-async function handleAvailableCommand() {
+async function handleAvailableCommand(parsed) {
+  const { flags } = parsed;
+  
+  // Configure registry source
+  if (flags.svgl) {
+    registry.registrySource = 'svgl';
+    registry.useSvgl = true;
+    registry.useGithub = false;
+  }
+  
   const available = await registry.getAvailableComponents();
   const stats = await registry.getStats();
   
   console.log(chalk.blue("🎨 Available components in registry:"));
   console.log(chalk.gray(`Total: ${stats.totalComponents} components (${stats.source})`));
   
-  available.forEach(comp => {
-    console.log(chalk.cyan(`   • ${comp}`));
-  });
+  if (flags.category) {
+    const categoryComponents = await registry.getComponentsByCategory(flags.category);
+    console.log(chalk.yellow(`\n📁 Components in '${flags.category}' category:`));
+    categoryComponents.forEach(comp => {
+      console.log(chalk.cyan(`   • ${comp}`));
+    });
+  } else if (flags.search) {
+    const searchResults = await registry.searchComponents(flags.search);
+    console.log(chalk.yellow(`\n🔍 Components matching '${flags.search}':`));
+    searchResults.forEach(comp => {
+      console.log(chalk.cyan(`   • ${comp}`));
+    });
+  } else {
+    // Show first 20 components
+    available.slice(0, 20).forEach(comp => {
+      console.log(chalk.cyan(`   • ${comp}`));
+    });
+    
+    if (available.length > 20) {
+      console.log(chalk.gray(`   ... and ${available.length - 20} more`));
+      console.log(chalk.gray(`\nUse --search or --category to filter results`));
+    }
+  }
 }
 
 /**
- * Show help
+ * Handle categories command (SVGL feature)
+ */
+async function handleCategoriesCommand(parsed) {
+  const { flags } = parsed;
+  
+  // Configure registry source
+  if (flags.svgl) {
+    registry.registrySource = 'svgl';
+    registry.useSvgl = true;
+    registry.useGithub = false;
+  }
+  
+  const categories = await registry.getCategories();
+  
+  console.log(chalk.blue("📁 Available categories:"));
+  categories.slice(0, 15).forEach(cat => {
+    console.log(chalk.cyan(`   • ${cat.category} `) + chalk.gray(`(${cat.total} components)`));
+  });
+  
+  if (categories.length > 15) {
+    console.log(chalk.gray(`   ... and ${categories.length - 15} more categories`));
+  }
+  
+  console.log(chalk.yellow("\n💡 Usage examples:"));
+  console.log(chalk.gray("   add --category framework --tsx"));
+  console.log(chalk.gray("   available --category software"));
+}
+
+/**
+ * Show help with SVGL features
  */
 function showHelp() {
-  console.log(chalk.blue("📦 Logos CLI"));
+  console.log(chalk.blue("📦 Company Logos CLI"));
   console.log(chalk.white("\n🔧 Commands:"));
   console.log(chalk.cyan("   add <name...>     ") + chalk.gray("Add logo component(s)"));
   console.log(chalk.cyan("   list              ") + chalk.gray("List logos in project"));
   console.log(chalk.cyan("   available         ") + chalk.gray("List available components"));
+  console.log(chalk.cyan("   categories        ") + chalk.gray("List component categories"));
   
   console.log(chalk.white("\n⚡ Flags:"));
   console.log(chalk.cyan("   --tsx             ") + chalk.gray("Create TypeScript components"));
   console.log(chalk.cyan("   --jsx             ") + chalk.gray("Create JavaScript components"));
   console.log(chalk.cyan("   --force, -f       ") + chalk.gray("Overwrite existing files"));
   console.log(chalk.cyan("   --all, -a         ") + chalk.gray("Add all available components"));
+  console.log(chalk.cyan("   --svgl            ") + chalk.gray("Use SVGL registry (500+ logos)"));
+  console.log(chalk.cyan("   --category, -c    ") + chalk.gray("Filter by category"));
+  console.log(chalk.cyan("   --search, -s      ") + chalk.gray("Search components"));
   
   console.log(chalk.white("\n🌟 Examples:"));
-  console.log(chalk.gray("   logos add vercel --tsx"));
-  console.log(chalk.gray("   logos add vercel next --jsx --force"));
-  console.log(chalk.gray("   logos add --all --tsx"));
-  console.log(chalk.gray("   logos list"));
-  console.log(chalk.gray("   logos available"));
+  console.log(chalk.gray("   company-logos add vercel --tsx"));
+  console.log(chalk.gray("   company-logos add --svgl discord --jsx"));
+  console.log(chalk.gray("   company-logos add --category framework --tsx"));
+  console.log(chalk.gray("   company-logos add --search react --jsx"));
+  console.log(chalk.gray("   company-logos available --svgl"));
+  console.log(chalk.gray("   company-logos categories --svgl"));
 }
 
 /**
@@ -384,7 +509,10 @@ async function main() {
         handleListCommand();
         break;
       case "available":
-        await handleAvailableCommand();
+        await handleAvailableCommand(parsed);
+        break;
+      case "categories":
+        await handleCategoriesCommand(parsed);
         break;
       default:
         showHelp();
