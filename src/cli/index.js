@@ -1,4 +1,6 @@
-import { existsSync, writeFileSync, mkdirSync, readFileSync } from "fs";
+#!/usr/bin/env node
+
+import { existsSync, writeFileSync, mkdirSync, readFileSync, unlinkSync } from "fs";
 import { join } from "path";
 import chalk from "chalk";
 import * as readline from "readline";
@@ -138,7 +140,7 @@ export default function ${componentClassName}Logo({ className, width = 24, heigh
 }
 
 /**
- * Create a single component
+ * Create a single component with proper error handling
  */
 async function createComponent(componentName, isTypeScript, force = false) {
   const fileExtension = isTypeScript ? 'tsx' : 'jsx';
@@ -160,16 +162,48 @@ async function createComponent(componentName, isTypeScript, force = false) {
   const svgContent = component.content;
   const componentContent = generateComponentContent(componentName, svgContent, isTypeScript);
 
-  writeFileSync(componentFile, componentContent);
-  
-  // Add to tracking
-  addLogoToTracking(componentName, fileExtension, componentFile);
-  
-  const icon = force ? '🔄' : '✨';
-  const action = force ? 'Updated' : 'Created';
-  console.log(chalk.green(`${icon} ${action} '${componentName}.${fileExtension}' in 'components/logos/'`));
-  
-  return true;
+  try {
+    // Check if we can write to the directory
+    if (!existsSync(logosDir)) {
+      console.log(chalk.yellow(`⚡ Creating 'components/logos/' directory...`));
+      mkdirSync(logosDir, { recursive: true });
+    }
+    
+    // Test write permissions
+    const testFile = join(logosDir, '.write-test');
+    try {
+      writeFileSync(testFile, 'test');
+      unlinkSync(testFile);
+    } catch (permError) {
+      console.error(chalk.red(`❌ Permission denied: Cannot write to '${logosDir}'`));
+      console.log(chalk.yellow(`💡 Try running with elevated permissions or check directory ownership`));
+      return false;
+    }
+
+    writeFileSync(componentFile, componentContent);
+    
+    // Add to tracking
+    addLogoToTracking(componentName, fileExtension, componentFile);
+    
+    const icon = force ? '🔄' : '✨';
+    const action = force ? 'Updated' : 'Created';
+    console.log(chalk.green(`${icon} ${action} '${componentName}.${fileExtension}' in 'components/logos/'`));
+    
+    return true;
+  } catch (error) {
+    console.error(chalk.red(`❌ Failed to create component: ${error.message}`));
+    
+    if (error.code === 'EACCES') {
+      console.log(chalk.yellow(`💡 Permission denied. Try:`));
+      console.log(chalk.gray(`   • Running from your project directory`));
+      console.log(chalk.gray(`   • Checking directory permissions`));
+      console.log(chalk.gray(`   • Using sudo (if necessary)`));
+    } else if (error.code === 'ENOENT') {
+      console.log(chalk.yellow(`💡 Directory not found. Make sure you're in a valid project directory.`));
+    }
+    
+    return false;
+  }
 }
 
 /**
@@ -308,15 +342,37 @@ function showHelp() {
 async function main() {
   const parsed = parseArgs();
 
-  // Ensure directories exist
-  if (!existsSync(componentsDir)) {
-    console.log(chalk.yellow("⚡ Creating 'components/' folder..."));
-    mkdirSync(componentsDir, { recursive: true });
+  // Validate we're in a suitable directory
+  try {
+    const currentDir = process.cwd();
+    console.log(chalk.gray(`📁 Working in: ${currentDir}`));
+  } catch (error) {
+    console.error(chalk.red("❌ Cannot access current directory"));
+    process.exit(1);
   }
 
-  if (!existsSync(logosDir)) {
-    console.log(chalk.yellow("⚡ Creating 'logos/' folder..."));
-    mkdirSync(logosDir, { recursive: true });
+  // Ensure directories exist with proper error handling
+  try {
+    if (!existsSync(componentsDir)) {
+      console.log(chalk.yellow("⚡ Creating 'components/' folder..."));
+      mkdirSync(componentsDir, { recursive: true });
+    }
+
+    if (!existsSync(logosDir)) {
+      console.log(chalk.yellow("⚡ Creating 'logos/' folder..."));
+      mkdirSync(logosDir, { recursive: true });
+    }
+  } catch (error) {
+    console.error(chalk.red(`❌ Cannot create directories: ${error.message}`));
+    
+    if (error.code === 'EACCES') {
+      console.log(chalk.yellow(`💡 Permission denied. Suggestions:`));
+      console.log(chalk.gray(`   • Make sure you have write permissions to this directory`));
+      console.log(chalk.gray(`   • Try running from your project root directory`));
+      console.log(chalk.gray(`   • Check if the directory is read-only`));
+    }
+    
+    process.exit(1);
   }
 
   try {
@@ -336,6 +392,14 @@ async function main() {
     }
   } catch (error) {
     console.error(chalk.red("💥 An error occurred:"), error.message);
+    
+    // Provide helpful debug info
+    console.log(chalk.gray("\n🔍 Debug info:"));
+    console.log(chalk.gray(`   Current directory: ${process.cwd()}`));
+    console.log(chalk.gray(`   Node version: ${process.version}`));
+    console.log(chalk.gray(`   Platform: ${process.platform}`));
+    
+    process.exit(1);
   }
   
   rl.close();
