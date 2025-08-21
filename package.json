@@ -1,6 +1,6 @@
 {
   "name": "logos",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "CLI + component registry for Logos",
   "main": "src/cli/index.js",
   "type": "module",
