@@ -16,11 +16,11 @@ class LogoRegistry {
     this.components = new Map();
     this.isLoaded = false;
     this.githubBaseUrl = "https://raw.githubusercontent.com/bhaveshsinghal95182/logos/main/registry/components";
-    this.useGithub = true; 
+    this.useGithub = true;
   }
 
   /**
-   * Load all SVG components from GitHub (primary) or local fallback
+   * Load all SVG components from GitHub (optimized for npx)
    */
   async loadComponents() {
     if (this.isLoaded) return;
@@ -31,6 +31,7 @@ class LogoRegistry {
       } else {
         await this.loadFromLocal();
       }
+      
       this.isLoaded = true;
       console.log(`✨ Loaded ${this.components.size} components into registry`);
     } catch (error) {
@@ -67,7 +68,7 @@ class LogoRegistry {
   }
 
   /**
-   * Load components from GitHub
+   * Load components from GitHub with parallel downloads
    */
   async loadFromGithub() {
     // Get the list of available components from the GitHub API
@@ -82,7 +83,8 @@ class LogoRegistry {
       const files = await response.json();
       const svgFiles = files.filter(file => file.name.endsWith('.svg'));
       
-      for (const file of svgFiles) {
+      // Parallel download all SVG files
+      const downloadPromises = svgFiles.map(async (file) => {
         const name = file.name.replace('.svg', '');
         const downloadUrl = file.download_url;
         
@@ -90,19 +92,35 @@ class LogoRegistry {
           const svgResponse = await fetch(downloadUrl);
           if (svgResponse.ok) {
             const content = await svgResponse.text();
-            this.components.set(name, {
+            return {
               name,
-              filePath: downloadUrl,
-              content,
-              size: Buffer.byteLength(content, 'utf8'),
-              lastModified: new Date().toISOString(),
-              source: 'github'
-            });
+              component: {
+                name,
+                filePath: downloadUrl,
+                content,
+                size: Buffer.byteLength(content, 'utf8'),
+                lastModified: new Date().toISOString(),
+                source: 'github'
+              }
+            };
           }
         } catch (error) {
           console.warn(`⚠️  Failed to load ${name} from GitHub:`, error.message);
+          return null;
         }
-      }
+      });
+
+      // Wait for all downloads to complete
+      const results = await Promise.allSettled(downloadPromises);
+      
+      // Process successful downloads
+      results.forEach(result => {
+        if (result.status === 'fulfilled' && result.value) {
+          const { name, component } = result.value;
+          this.components.set(name, component);
+        }
+      });
+      
     } catch (error) {
       console.error('❌ Failed to fetch component list from GitHub:', error.message);
       // Fallback to local if GitHub fails
@@ -111,23 +129,65 @@ class LogoRegistry {
   }
 
   /**
-   * Get a component by name (async for GitHub support)
+   * Load a single component on-demand (optimized for npx)
+   * @param {string} name - Component name
+   * @returns {Promise<Object|null>} Component data or null if not found
+   */
+  async loadSingleComponent(name) {
+    const url = `${this.githubBaseUrl}/${name}.svg`;
+    
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        const content = await response.text();
+        const component = {
+          name,
+          filePath: url,
+          content,
+          size: Buffer.byteLength(content, 'utf8'),
+          lastModified: new Date().toISOString(),
+          source: 'github'
+        };
+        
+        this.components.set(name, component);
+        return component;
+      }
+    } catch (error) {
+      console.warn(`⚠️  Failed to load ${name} from GitHub:`, error.message);
+    }
+    
+    return null;
+  }
+
+  /**
+   * Get a component by name with lazy loading
    * @param {string} name - Component name
    * @returns {Promise<Object|null>} Component data or null if not found
    */
   async getComponent(name) {
-    await this.loadComponents();
-    return this.components.get(name) || null;
+    // Check if already loaded
+    if (this.components.has(name)) {
+      return this.components.get(name);
+    }
+    
+    // Lazy load single component
+    return await this.loadSingleComponent(name);
   }
 
   /**
-   * Check if a component exists
+   * Check if a component exists (lazy check)
    * @param {string} name - Component name
    * @returns {Promise<boolean>}
    */
   async hasComponent(name) {
-    await this.loadComponents();
-    return this.components.has(name);
+    // Quick check if already loaded
+    if (this.components.has(name)) {
+      return true;
+    }
+    
+    // Lazy load to verify existence
+    const component = await this.loadSingleComponent(name);
+    return component !== null;
   }
 
   /**
