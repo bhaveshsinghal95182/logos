@@ -1,5 +1,5 @@
 {
-  "name": "logos",
+  "name": "@company/logos",
   "version": "1.0.1",
   "description": "CLI + component registry for Logos",
   "main": "src/cli/index.js",
