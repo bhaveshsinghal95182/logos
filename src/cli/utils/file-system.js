@@ -21,10 +21,10 @@ export class FileSystemUtils {
   }
 
   /**
-   * Check if the current directory is a React project
+   * Check if the current directory is a React or SolidJS project
    * @returns {boolean}
    */
-  isReactProject() {
+  isReactOrSolidProject() {
     try {
       const packageJsonPath = join(this.cwd, "package.json");
       if (existsSync(packageJsonPath)) {
@@ -33,7 +33,11 @@ export class FileSystemUtils {
           ...packageJson.dependencies,
           ...packageJson.devDependencies,
         };
-        if (dependencies.react || dependencies["react-dom"]) {
+        if (
+          dependencies.react ||
+          dependencies["react-dom"] ||
+          dependencies["solid-js"]
+        ) {
           return true;
         }
       }
@@ -47,9 +51,7 @@ export class FileSystemUtils {
 
       return false;
     } catch (error) {
-      console.warn(
-        chalk.yellow(`⚠️  Error checking React project: ${error.message}`)
-      );
+      console.warn(chalk.yellow(`⚠️  Error checking project type: ${error.message}`));
       return false;
     }
   }
@@ -58,8 +60,8 @@ export class FileSystemUtils {
    * Ensure directories exist
    */
   ensureDirectories() {
-    if (!this.isReactProject()) {
-      console.log(chalk.red(`❌ You are not in a valid React project directory`));
+    if (!this.isReactOrSolidProject()) {
+      console.log(chalk.red(`❌ You are not in a valid React or SolidJS project directory`));
       return false;
     }
 
