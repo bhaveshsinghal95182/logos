@@ -1,26 +1,212 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Updated to Gruvbox color scheme */
+  --background: #fbf1c7; /* Gruvbox light background */
+  --foreground: #3c3836; /* Gruvbox dark gray */
+  --card: #f9f5d7; /* Gruvbox light background soft */
+  --card-foreground: #3c3836;
+  --popover: #fbf1c7;
+  --popover-foreground: #3c3836;
+  --primary: #d79921; /* Gruvbox yellow */
+  --primary-foreground: #1d2021; /* Gruvbox dark background */
+  --secondary: #98971a; /* Gruvbox green */
+  --secondary-foreground: #1d2021;
+  --muted: #f2e5bc; /* Gruvbox light background hard */
+  --muted-foreground: #7c6f64; /* Gruvbox gray */
+  --accent: #458588; /* Gruvbox blue */
+  --accent-foreground: #1d2021;
+  --destructive: #cc241d; /* Gruvbox red */
+  --destructive-foreground: #fbf1c7;
+  --border: #d5c4a1; /* Gruvbox light gray */
+  --input: #f9f5d7;
+  --ring: rgba(215, 153, 33, 0.5); /* Gruvbox yellow with opacity */
+  --chart-1: #d79921;
+  --chart-2: #98971a;
+  --chart-3: #458588;
+  --chart-4: #b16286;
+  --chart-5: #689d6a;
+  --radius: 0.5rem;
+  --sidebar: #f9f5d7;
+  --sidebar-foreground: #3c3836;
+  --sidebar-primary: #d79921;
+  --sidebar-primary-foreground: #1d2021;
+  --sidebar-accent: #458588;
+  --sidebar-accent-foreground: #1d2021;
+  --sidebar-border: #d5c4a1;
+  --sidebar-ring: rgba(215, 153, 33, 0.5);
+
+  /* Added Gruvbox color variables for direct use */
+  --gruvbox-bg-hard: #f9f5d7;
+  --gruvbox-bg: #fbf1c7;
+  --gruvbox-bg-soft: #f2e5bc;
+  --gruvbox-fg: #3c3836;
+  --gruvbox-fg-soft: #504945;
+  --gruvbox-gray: #928374;
+  --gruvbox-red: #cc241d;
+  --gruvbox-red-bright: #fb4934;
+  --gruvbox-green: #98971a;
+  --gruvbox-green-bright: #b8bb26;
+  --gruvbox-yellow: #d79921;
+  --gruvbox-yellow-bright: #fabd2f;
+  --gruvbox-blue: #458588;
+  --gruvbox-blue-bright: #83a598;
+  --gruvbox-purple: #b16286;
+  --gruvbox-purple-bright: #d3869b;
+  --gruvbox-aqua: #689d6a;
+  --gruvbox-aqua-bright: #8ec07c;
+  --gruvbox-orange: #d65d0e;
+  --gruvbox-orange-bright: #fe8019;
+}
+
+.dark {
+  /* Updated dark mode to Gruvbox dark theme */
+  --background: #1d2021; /* Gruvbox dark background hard */
+  --foreground: #ebdbb2; /* Gruvbox light foreground */
+  --card: #282828; /* Gruvbox dark background */
+  --card-foreground: #ebdbb2;
+  --popover: #282828;
+  --popover-foreground: #ebdbb2;
+  --primary: #fabd2f; /* Gruvbox bright yellow */
+  --primary-foreground: #1d2021;
+  --secondary: #504945; /* Gruvbox dark gray */
+  --secondary-foreground: #ebdbb2;
+  --muted: #32302f; /* Gruvbox dark background soft */
+  --muted-foreground: #a89984; /* Gruvbox light gray */
+  --accent: #83a598; /* Gruvbox bright blue */
+  --accent-foreground: #1d2021;
+  --destructive: #fb4934; /* Gruvbox bright red */
+  --destructive-foreground: #ebdbb2;
+  --border: #504945;
+  --input: #282828;
+  --ring: rgba(250, 189, 47, 0.5);
+  --chart-1: #fabd2f;
+  --chart-2: #b8bb26;
+  --chart-3: #83a598;
+  --chart-4: #d3869b;
+  --chart-5: #8ec07c;
+  --sidebar: #282828;
+  --sidebar-foreground: #ebdbb2;
+  --sidebar-primary: #fabd2f;
+  --sidebar-primary-foreground: #1d2021;
+  --sidebar-accent: #504945;
+  --sidebar-accent-foreground: #ebdbb2;
+  --sidebar-border: #504945;
+  --sidebar-ring: rgba(250, 189, 47, 0.5);
+
+  /* Dark mode Gruvbox color variables */
+  --gruvbox-bg-hard: #1d2021;
+  --gruvbox-bg: #282828;
+  --gruvbox-bg-soft: #32302f;
+  --gruvbox-fg: #ebdbb2;
+  --gruvbox-fg-soft: #d5c4a1;
+  --gruvbox-gray: #928374;
+  --gruvbox-red: #cc241d;
+  --gruvbox-red-bright: #fb4934;
+  --gruvbox-green: #98971a;
+  --gruvbox-green-bright: #b8bb26;
+  --gruvbox-yellow: #d79921;
+  --gruvbox-yellow-bright: #fabd2f;
+  --gruvbox-blue: #458588;
+  --gruvbox-blue-bright: #83a598;
+  --gruvbox-purple: #b16286;
+  --gruvbox-purple-bright: #d3869b;
+  --gruvbox-aqua: #689d6a;
+  --gruvbox-aqua-bright: #8ec07c;
+  --gruvbox-orange: #d65d0e;
+  --gruvbox-orange-bright: #fe8019;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-instrument-serif: var(--font-instrument-serif);
+  /* Added Gruvbox colors to Tailwind theme */
+  --color-gruvbox-bg-hard: var(--gruvbox-bg-hard);
+  --color-gruvbox-bg: var(--gruvbox-bg);
+  --color-gruvbox-bg-soft: var(--gruvbox-bg-soft);
+  --color-gruvbox-fg: var(--gruvbox-fg);
+  --color-gruvbox-fg-soft: var(--gruvbox-fg-soft);
+  --color-gruvbox-gray: var(--gruvbox-gray);
+  --color-gruvbox-red: var(--gruvbox-red);
+  --color-gruvbox-red-bright: var(--gruvbox-red-bright);
+  --color-gruvbox-green: var(--gruvbox-green);
+  --color-gruvbox-green-bright: var(--gruvbox-green-bright);
+  --color-gruvbox-yellow: var(--gruvbox-yellow);
+  --color-gruvbox-yellow-bright: var(--gruvbox-yellow-bright);
+  --color-gruvbox-blue: var(--gruvbox-blue);
+  --color-gruvbox-blue-bright: var(--gruvbox-blue-bright);
+  --color-gruvbox-purple: var(--gruvbox-purple);
+  --color-gruvbox-purple-bright: var(--gruvbox-purple-bright);
+  --color-gruvbox-aqua: var(--gruvbox-aqua);
+  --color-gruvbox-aqua-bright: var(--gruvbox-aqua-bright);
+  --color-gruvbox-orange: var(--gruvbox-orange);
+  --color-gruvbox-orange-bright: var(--gruvbox-orange-bright);
+
+  /* Updated font configuration for Geist fonts */
+  --font-sans: var(--font-geist);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    /* Set Geist as the default font family */
+    font-family: var(--font-geist);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.instrument {
+  font-family: var(--font-instrument-serif);
+}
+
+.font-mono {
+  font-family: var(--font-geist-mono);
+}
+
+/* Added ASCII art styles for company-logos header */
+.ascii-art {
+  letter-spacing: 0;
+  font-family: "Courier New", monospace;
+  line-height: 1;
 }

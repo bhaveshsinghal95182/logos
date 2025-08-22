@@ -1,0 +1,8 @@
+packages:
+  - www
+  - .
+
+ignoredBuiltDependencies:
+  - '@tailwindcss/oxide'
+  - sharp
+  - unrs-resolver
