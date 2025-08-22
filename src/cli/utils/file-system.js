@@ -21,10 +21,10 @@ export class FileSystemUtils {
   }
 
   /**
-   * Check if the current directory is a React or SolidJS project
+   * Check if the current directory is a React, SolidJS, or Astro project
    * @returns {boolean}
    */
-  isReactOrSolidProject() {
+  isSupportedProject() {
     try {
       const packageJsonPath = join(this.cwd, "package.json");
       if (existsSync(packageJsonPath)) {
@@ -36,13 +36,20 @@ export class FileSystemUtils {
         if (
           dependencies.react ||
           dependencies["react-dom"] ||
-          dependencies["solid-js"]
+          dependencies["solid-js"] ||
+          dependencies.astro
         ) {
           return true;
         }
       }
 
-      const configFiles = ["vite.config.js", "next.config.js", "tsconfig.json"];
+      const configFiles = [
+        "vite.config.js",
+        "next.config.js",
+        "astro.config.mjs",
+        "astro.config.js",
+        "tsconfig.json",
+      ];
       for (const file of configFiles) {
         if (existsSync(join(this.cwd, file))) {
           return true;
@@ -51,7 +58,9 @@ export class FileSystemUtils {
 
       return false;
     } catch (error) {
-      console.warn(chalk.yellow(`⚠️  Error checking project type: ${error.message}`));
+      console.warn(
+        chalk.yellow(`⚠️  Error checking project type: ${error.message}`)
+      );
       return false;
     }
   }
@@ -60,8 +69,12 @@ export class FileSystemUtils {
    * Ensure directories exist
    */
   ensureDirectories() {
-    if (!this.isReactOrSolidProject()) {
-      console.log(chalk.red(`❌ You are not in a valid React or SolidJS project directory`));
+    if (!this.isSupportedProject()) {
+      console.log(
+        chalk.red(
+          `❌ You are not in a valid React, SolidJS, or Astro project directory`
+        )
+      );
       return false;
     }
 
