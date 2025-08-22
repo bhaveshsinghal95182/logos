@@ -21,11 +21,45 @@ export class FileSystemUtils {
   }
 
   /**
+   * Check if the current directory is a React project
+   * @returns {boolean}
+   */
+  isReactProject() {
+    try {
+      const packageJsonPath = join(this.cwd, "package.json");
+      if (existsSync(packageJsonPath)) {
+        const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+        const dependencies = {
+          ...packageJson.dependencies,
+          ...packageJson.devDependencies,
+        };
+        if (dependencies.react || dependencies["react-dom"]) {
+          return true;
+        }
+      }
+
+      const configFiles = ["vite.config.js", "next.config.js", "tsconfig.json"];
+      for (const file of configFiles) {
+        if (existsSync(join(this.cwd, file))) {
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.warn(
+        chalk.yellow(`⚠️  Error checking React project: ${error.message}`)
+      );
+      return false;
+    }
+  }
+
+  /**
    * Ensure directories exist
    */
   ensureDirectories() {
-    if (!existsSync(this.srcDir)) {
-      console.log(chalk.red(`❌ You are not in a valid project directory`));
+    if (!this.isReactProject()) {
+      console.log(chalk.red(`❌ You are not in a valid React project directory`));
       return false;
     }
 
