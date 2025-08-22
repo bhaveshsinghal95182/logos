@@ -1,6 +1,6 @@
 {
   "name": "company-logos",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "CLI + component registry for Logos",
   "main": "src/cli/main.js",
   "type": "module",
