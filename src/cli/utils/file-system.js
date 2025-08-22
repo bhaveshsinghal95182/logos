@@ -21,10 +21,10 @@ export class FileSystemUtils {
   }
 
   /**
-   * Check if the current directory is a React, SolidJS, or Astro project
-   * @returns {boolean}
+   * Get the project type (vue, react, solid, astro, or unknown)
+   * @returns {string}
    */
-  isSupportedProject() {
+  getProjectType() {
     try {
       const packageJsonPath = join(this.cwd, "package.json");
       if (existsSync(packageJsonPath)) {
@@ -33,38 +33,59 @@ export class FileSystemUtils {
           ...packageJson.dependencies,
           ...packageJson.devDependencies,
         };
-        if (
-          dependencies.react ||
-          dependencies["react-dom"] ||
-          dependencies["solid-js"] ||
-          dependencies.astro
-        ) {
-          return true;
+        
+        // Check Vue first since it has its own file format
+        if (dependencies.vue) {
+          return "vue";
+        }
+        
+        // Check other JSX-based frameworks
+        if (dependencies.react || dependencies["react-dom"]) {
+          return "react";
+        }
+        
+        if (dependencies["solid-js"]) {
+          return "solid";
+        }
+        
+        if (dependencies.astro) {
+          return "astro";
         }
       }
 
-      const configFiles = [
-        "vite.config.js",
-        "next.config.js",
-        "astro.config.mjs",
-        "astro.config.js",
-        "tsconfig.json",
-      ];
-      for (const file of configFiles) {
+      // Check config files as fallback
+      const configFiles = {
+        "vue.config.js": "vue",
+        "next.config.js": "react",
+        "astro.config.mjs": "astro",
+        "astro.config.js": "astro",
+        "vite.config.js": "unknown", // Could be any framework
+      };
+      
+      for (const [file, type] of Object.entries(configFiles)) {
         if (existsSync(join(this.cwd, file))) {
-          return true;
+          return type;
         }
       }
 
-      return false;
+      return "unknown";
     } catch (error) {
       console.warn(
         chalk.yellow(`⚠️  Error checking project type: ${error.message}`)
       );
-      return false;
+      return "unknown";
     }
   }
 
+  /**
+   * Check if the current directory is a supported project
+   * @returns {boolean}
+   */
+  isSupportedProject() {
+    const projectType = this.getProjectType();
+    return ["vue", "react", "solid", "astro"].includes(projectType);
+  }
+  
   /**
    * Ensure directories exist
    */
@@ -72,7 +93,7 @@ export class FileSystemUtils {
     if (!this.isSupportedProject()) {
       console.log(
         chalk.red(
-          `❌ You are not in a valid React, SolidJS, or Astro project directory`
+            `❌ You are not in a valid React, SolidJS, Astro, or Vue project directory`
         )
       );
       return false;
@@ -87,6 +108,24 @@ export class FileSystemUtils {
       console.log(chalk.yellow(`⚡ Creating 'logos/' folder...`));
       mkdirSync(this.logosDir, { recursive: true });
     }
+    
+    return true;
+  }
+  
+  /**
+   * Get the appropriate file extension for the project type
+   * @param {boolean} isTypeScript - Whether to use TypeScript (only relevant for JSX-based frameworks)
+   * @returns {string} File extension
+   */
+  getFileExtension(isTypeScript = false) {
+    const projectType = this.getProjectType();
+    
+    if (projectType === "vue") {
+      return "vue";
+    }
+    
+    // For JSX-based frameworks (React, SolidJS, Astro)
+    return isTypeScript ? "tsx" : "jsx";
   }
 
   /**

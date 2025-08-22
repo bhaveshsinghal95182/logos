@@ -96,11 +96,22 @@ export class AddCommandHandler {
   }
 
   /**
-   * Resolve language preference from flags or user input
+   * Resolve language preference from flags or project type
    * @param {Object} flags - Command flags
    * @returns {Promise<boolean|null>} TypeScript preference or null if cancelled
    */
   async resolveLanguage(flags) {
+    const projectType = this.fileSystem.getProjectType();
+    
+    // For Vue projects, TypeScript preference doesn't matter for file extension
+    if (projectType === "vue") {
+      if (flags.tsx || flags.jsx) {
+        console.log(chalk.yellow("⚠️  TypeScript/JavaScript flags are ignored for Vue projects. Vue components use .vue extension."));
+      }
+      return false; // Default value, not used for Vue
+    }
+    
+    // For JSX-based frameworks
     if (flags.tsx) {
       return true;
     } else if (flags.jsx) {
@@ -124,10 +135,11 @@ export class AddCommandHandler {
    * @returns {Promise<void>}
    */
   async createComponents(components, isTypeScript, force) {
-    const fileExtension = isTypeScript ? 'tsx' : 'jsx';
+    const projectType = this.fileSystem.getProjectType();
+    const fileExtension = this.fileSystem.getFileExtension(isTypeScript);
     let successfulCreations = 0;
 
-    UserInterface.showCreationProgress(components.length, isTypeScript);
+    UserInterface.showCreationProgress(components.length, isTypeScript, projectType);
 
     for (const componentName of components) {
       const success = await this.createSingleComponent(componentName, isTypeScript, force);
@@ -149,7 +161,8 @@ export class AddCommandHandler {
    * @returns {Promise<boolean>} Success status
    */
   async createSingleComponent(componentName, isTypeScript, force) {
-    const fileExtension = isTypeScript ? 'tsx' : 'jsx';
+    const projectType = this.fileSystem.getProjectType();
+    const fileExtension = this.fileSystem.getFileExtension(isTypeScript);
 
     // Check if file exists and handle force flag
     if (this.fileSystem.componentExists(componentName, fileExtension) && !force) {
@@ -165,7 +178,7 @@ export class AddCommandHandler {
     }
 
     const svgContent = component.content;
-    const componentContent = ComponentGenerator.generate(componentName, svgContent, isTypeScript);
+    const componentContent = ComponentGenerator.generate(componentName, svgContent, projectType, isTypeScript);
 
     // Write component file
     const success = this.fileSystem.writeComponent(componentName, componentContent, fileExtension);

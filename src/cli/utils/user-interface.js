@@ -65,9 +65,25 @@ export class UserInterface {
    * Show creation progress
    * @param {number} count - Number of components to create
    * @param {boolean} isTypeScript - Whether creating TypeScript components
+   * @param {string} projectType - Project type (vue, react, solid, astro)
    */
-  static showCreationProgress(count, isTypeScript) {
-    const lang = isTypeScript ? 'TSX' : 'JSX';
+  static showCreationProgress(count, isTypeScript, projectType = 'react') {
+    let lang;
+    switch (projectType) {
+      case 'vue':
+        lang = 'Vue';
+        break;
+      case 'solid':
+        lang = isTypeScript ? 'Solid TSX' : 'Solid JSX';
+        break;
+      case 'astro':
+        lang = isTypeScript ? 'Astro TSX' : 'Astro JSX';
+        break;
+      case 'react':
+      default:
+        lang = isTypeScript ? 'React TSX' : 'React JSX';
+        break;
+    }
     console.log(chalk.blue(`🚀 Creating ${count} component(s) as ${lang}...`));
   }
 
